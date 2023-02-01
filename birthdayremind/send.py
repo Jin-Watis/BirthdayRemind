@@ -9,7 +9,7 @@ class SendMessage:
     def __init__(self, name, times):
         self.name = name
         self.times = times
-        path = "datas\\emaildata.json"
+        path = r"datas/emaildata.json"
         with open(path, 'r') as f:
             row = json.load(f)
         self.host = row['host']

@@ -64,7 +64,7 @@ class Datas():
 
 if __name__ == '__main__':
     TodayData = GetToday()
-    Data = np.load("../birthdayremind/datas/data.npy", allow_pickle=True).item()
+    Data = np.load("../datas/data.npy", allow_pickle=True).item()
 
     myapp = QApplication(sys.argv)
     myDlg = Main()
