@@ -18,7 +18,7 @@ def Save(data, file):  # Save
 # print(Load("data.npy"))
 
 
-Data = Load("../datas/data.npy")
+Data = Load("../birthdayremind/datas/data.npy")
 
 window = tk.Tk()  # init
 window.title('My Window')  # window name
@@ -104,7 +104,7 @@ list1 = []
 
 
 def showAll():
-    output = open('../datas/all.txt', 'w')
+    output = open('../birthdayremind/datas/all.txt', 'w')
     for i in Data:
         m = Data[i]
         for j in m:
@@ -114,7 +114,7 @@ def showAll():
 
     output.close()
     import os
-    os.system("../datas/all.txt")
+    os.system("../birthdayremind/datas/all.txt")
 
 
 button = tk.Button(window, text='全部/ALL', font=('微软雅黑', 12), command=showAll)
@@ -130,7 +130,7 @@ def Add():
     try:
         Data[int(month)][int(day)] = tname
         tk.messagebox.showinfo(title='OK', message='添加成功')
-        Save(Data, "../datas/data.npy")
+        Save(Data, "../birthdayremind/datas/data.npy")
     except BaseException:
         tk.messagebox.showerror(title='Error', message='添加失败')
 
