@@ -1,5 +1,5 @@
 import sys
-import ChangeWindow
+from birthdayremind.change import ChangeWindow
 import datetime
 import pytz
 import calendar
@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow
 import numpy as np
 
 
-class GetToday():
+class GetToday:
     def __init__(self):
         tz = pytz.timezone('Asia/Shanghai')
         t = datetime.datetime.now(tz)
@@ -64,7 +64,7 @@ class Datas():
 
 if __name__ == '__main__':
     TodayData = GetToday()
-    Data = np.load("data.npy", allow_pickle=True).item()
+    Data = np.load("../datas/data.npy", allow_pickle=True).item()
 
     myapp = QApplication(sys.argv)
     myDlg = Main()
