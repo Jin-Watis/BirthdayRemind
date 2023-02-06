@@ -1,5 +1,5 @@
 ﻿# coding=UTF-8
-
+import json
 from tkinter import messagebox
 import pytz
 import datetime
@@ -12,7 +12,8 @@ from win10toast import ToastNotifier
 class Start:
     def __init__(self):
         self.toaster = ToastNotifier()
-        self.data = np.load(r'datas/data.npy', allow_pickle=True).item()
+        path = r"datas/data.json"
+        self.Lord(path)
 
         tz = pytz.timezone(r'Asia/Shanghai')
         self.t = datetime.datetime.now(tz)
@@ -44,7 +45,7 @@ class Start:
         # self.month = 2
         # self.day = 19
 
-        self.name = self.data[self.month][self.day]
+        self.name = self.data[(self.month, self.day)]
 
         if self.name:  # list不为空
             self.toaster.show_toast("今天是{}的生日".format("/".join(self.name)), "BirthdayRemind",
@@ -52,3 +53,21 @@ class Start:
             # messagebox.showinfo(title='OK', message='某人的生日!')
             birthdayremind.SendMessage(self.name, self.times)
         exit()
+
+    def Lord(self, path):
+        with open(path, 'r', encoding='gbk') as f:
+            data = json.load(f)
+
+        self.data = {}
+        odate = None
+        for name in data:
+            date = data[name]
+            date = ((date['month']), (date['day']))
+            if odate == date:
+                self.data[date].append(name)
+                continue
+            else:
+                odate = date
+
+            self.data[date] = [name]
+
