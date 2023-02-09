@@ -42,32 +42,27 @@ class Start:
         """
         text:
         """
-        # self.month = 2
-        # self.day = 19
+        # self.month = 1
+        # self.day = 2
 
-        self.name = self.data[(self.month, self.day)]
+        self.name = self.Date2Name[(self.month, self.day)]
 
         if self.name:  # list不为空
             self.toaster.show_toast("今天是{}的生日".format("/".join(self.name)), "BirthdayRemind",
                                     icon_path=None, duration=10, threaded=True)
-            # messagebox.showinfo(title='OK', message='某人的生日!')
             birthdayremind.SendMessage(self.name, self.times)
         exit()
 
     def Lord(self, path):
-        with open(path, 'r', encoding='gbk') as f:
-            data = json.load(f)
-
-        self.data = {}
-        odate = None
-        for name in data:
-            date = data[name]
-            date = ((date['month']), (date['day']))
-            if odate == date:
-                self.data[date].append(name)
-                continue
-            else:
-                odate = date
-
-            self.data[date] = [name]
+        with open(path, 'r', encoding='utf-8') as f:
+            self.Name2Date = json.load(f)
+        self.Date2Name = {}
+        for name in self.Name2Date:
+            dateList = self.Name2Date[name]
+            for date in dateList:
+                date = (date['month'], date['day'])
+                try:
+                    self.Date2Name[date].append(name)
+                except KeyError:
+                    self.Date2Name[date] = [name]
 

@@ -112,6 +112,13 @@
                 </property>
                </widget>
               </item>
+              <item>
+               <widget class="QPushButton" name="SEARCH">
+                <property name="text">
+                 <string>Search</string>
+                </property>
+               </widget>
+              </item>
              </layout>
             </item>
             <item alignment="Qt::AlignHCenter">
@@ -145,6 +152,21 @@
                    <string/>
                   </property>
                  </row>
+                 <column>
+                  <property name="text">
+                   <string>name</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>month</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>day</string>
+                  </property>
+                 </column>
                 </widget>
                </item>
               </layout>
