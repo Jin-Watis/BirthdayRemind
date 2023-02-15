@@ -2,31 +2,90 @@
 
 import json
 import multiprocessing
-import sys
 import os
+import subprocess
+import sys
+import winreg
+
 import PyQt5
-from change import Window
-import datetime
-import pytz
-import calendar
 from PyQt5.QtWidgets import QApplication, QMainWindow, QHeaderView, QTableWidgetItem, QMessageBox
-from PyQt5.QtGui import QIntValidator
+
+from change import Window
 
 
-class GetToday:
+class ChangedData:
+    def __init__(self, date=(0, 0), name='', config='', index=0):
+        self.date = date
+        self.name = name
+        self.config = config
+        self.index = index
+        self.all = {
+            'time': self.date,
+            'data': {'name': self.name, 'config': self.config},
+            'index': self.index,
+        }
+
+    def __str__(self) -> str:
+        return str(self.all)
+
+    def GetIndex(self) -> tuple:
+        t = (self.date[0], self.date[1], self.index)
+        return t
+
+
+class History:
     def __init__(self):
-        tz = pytz.timezone('Asia/Shanghai')
-        t = datetime.datetime.now(tz)
-        # print(t.month,t.day)
-        self.year = int(t.year)
-        self.month = int(t.month)
-        self.day = int(t.day)
+        self.members = []
+        self.map = {}
+
+    def __iter__(self):
+        self.k = 0
+        return self
+
+    def __next__(self):
+        if self.k < len(self.members):
+            a = self.members[self.k]
+            self.k += 1
+            return a
+        else:
+            raise StopIteration
+
+    def __getitem__(self, key):
+        return self.members[self.map[key]]
+
+    def __setitem__(self, key, value):
+        self.members.pop(self.map[key])
+        self.members.append(value)
+        self.map[key] = self.members.index(value)
+
+    def In(self, item):
+        return item in self.members
+
+    def IsNone(self):
+        return not bool(self.members)
+
+    def append(self, member: ChangedData):
+        self.members.append(member)
+        self.map[member.GetIndex()] = self.members.index(member)
+
+    def showInfo(self):
+        show = []
+        for m in self.members:
+            month, day = m.date[0], m.date[1]
+            name = m.name
+            config = m.config
+            if config == 'add' or config == 'del':
+                t = "{}月{}日, {}, {}".format(month, day, name, config)
+            else:
+                t = "{}月{}日, {}, 修改_{} ".format(month, day, name, config)
+            show.append(t)
+        return show
 
 
 class Main(QMainWindow):
     def __init__(self, parent=None):
         super(QMainWindow, self).__init__(parent)
-        self.ui = Window.Ui_MainWindow()
+        self.ui = Window.Ui_BirthdayManager()
         self.ui.setupUi(self)
 
         self.path = r"datas/data.json"
@@ -38,9 +97,8 @@ class Main(QMainWindow):
         self.ui.RESULT.setRowCount(0)
         self.inserttimes = 0
         self.just_search = 0
-        self.have_Changed_datas = []
-
-
+        self.have_Changed_datas = History()
+        self.LordAutoStart()
 
         # 绑定槽函数
         self.ui.SEARCH.clicked.connect(lambda: self.SearchByName())
@@ -118,17 +176,17 @@ class Main(QMainWindow):
             else:
                 # config是过去的名字
                 config: str = self.basic_data[item.row()]
-
-            changed_data = {
-                'time': (month, day),
-                'data': {'name': item.text(), 'config': config}
-            }
+            name = item.text()
+            config = config
         else:
-            changed_data = {
-                'time': (month, day),
-                'data': {'name': self.basic_data[item.row()], 'config': 'del'}
-            }
-        self.have_Changed_datas.append(changed_data)
+            name = self.basic_data[item.row()]
+            config = 'del'
+        changed_data = ChangedData(date=(month, day), name=name, config=config, index=item.row())
+
+        if changed_data.GetIndex() in self.have_Changed_datas.map.keys():
+            self.have_Changed_datas[changed_data.GetIndex()] = changed_data
+        else:
+            self.have_Changed_datas.append(changed_data)
 
     def ShowAll(self):
         with open('datas/all.txt', 'w') as output:
@@ -143,32 +201,35 @@ class Main(QMainWindow):
         fileopen.start()
 
     def Save(self):
-        if not self.have_Changed_datas:
-            return
-        st = '是否保存数据: \n'
-        for s in self.have_Changed_datas:
-            st += str(s)+'\n'
+        if self.have_Changed_datas.IsNone():
+            QMessageBox.information(self, 'Manager', '无更改', QMessageBox.Yes)
+        start_msg = '是否保存数据: \n'
+        st = start_msg
+        for s in self.have_Changed_datas.showInfo():
+            st += str(s) + '\n'
         MakeSure = QMessageBox.question(self, '保存', st, QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
         if MakeSure == QMessageBox.No:
             return
-
+        """
+        开始保存
+        """
         self.LordChangedData()
         self.Name2Date = {k: v for k, v in sorted(self.Name2Date.items(),
-                                                  key=lambda item: (item[1][0]['month'], item[1][0]['day'])
-                                                  )}
+                                                  key=lambda item: (item[1][0]['month'], item[1][0]['day']))}
         with open(self.path, 'w', encoding='utf-8') as f:
             json.dump(self.Name2Date, f, ensure_ascii=False)
-        self.have_Changed_datas = []
+        QMessageBox.information(self, '保存成功', st[len(start_msg):], QMessageBox.Ok, QMessageBox.Ok)
+        self.have_Changed_datas.__init__()
         self.Make_Date2Name()
+        self.SearchByDate()
 
     def LordChangedData(self):
         for people in self.have_Changed_datas:
             date = {
-                "month": int(people['time'][0]),
-                "day": int(people['time'][1])
+                "month": int(people.date[0]),
+                "day": int(people.date[1])
             }
-            data = people['data']
-            name, config = data['name'], data['config']
+            name, config = people.name, people.config
             if config == 'del':
                 self.Name2Date[name].remove(date)
                 if not self.Name2Date[name]:
@@ -201,13 +262,44 @@ class Main(QMainWindow):
                 except KeyError:
                     self.Date2Name[date] = [name]
 
+    def LordAutoStart(self):
+        def get_path(name):
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+                                 r'SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders')
+            return winreg.QueryValueEx(key, name)[0]
+
+        self.start_path = get_path("Startup")
+        self.start_files = os.listdir(self.start_path)
+        self.lnk_filename = 'BirthRemind.lnk'
+        self.ui.AutoStart.setChecked(self.lnk_filename in self.start_files)
+
     def AutoStart(self):
-        # TODO 想办法完善它
-        ...
+        config = self.ui.AutoStart.isChecked()
+        workspeace = os.path.abspath('.')
+        comm1 = "cd /d \"{}\"".format(self.start_path)
+        if config:
+            to = workspeace + r'\ink\BirthRemind.lnk'
+            comm2 = 'copy {} {}'.format(to, r".\\")
+            com = "{} && {}".format(comm1, comm2)
+            subprocess.run(com, shell=True)
+            self.start_files = os.listdir(self.start_path)
+            if "BirthRemind.lnk" in self.start_files:
+                QMessageBox.information(self, '添加成功', '添加快捷方式到启动目录:\n {}'.format(self.start_path),
+                                        QMessageBox.Ok, QMessageBox.Ok)
+                return
+        else:
+            comm2 = 'del {}'.format('BirthRemind.lnk')
+            com = "{} && {}".format(comm1, comm2)
+            subprocess.run(com, shell=True)
+            self.start_files = os.listdir(self.start_path)
+            if "BirthRemind.lnk" not in self.start_files:
+                QMessageBox.information(self, '删除成功', '以删除快捷方式从启动目录:\n {}'.format(self.start_path),
+                                        QMessageBox.Ok, QMessageBox.Ok)
+                return
+        QMessageBox.critical(self, '操作失败', com, QMessageBox.Yes)
 
 
 def run():
-    TodayData = GetToday()
     myapp = QApplication(sys.argv)
     myDlg = Main()
     myDlg.show()
