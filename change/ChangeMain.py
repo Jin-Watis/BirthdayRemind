@@ -8,7 +8,11 @@ import sys
 import winreg
 
 import PyQt5
-from PyQt5.QtWidgets import QApplication, QMainWindow, QHeaderView, QTableWidgetItem, QMessageBox
+import setproctitle
+from PyQt5 import QtCore
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIntValidator
+from PyQt5.QtWidgets import QApplication, QMainWindow, QHeaderView, QTableWidgetItem, QMessageBox, QCompleter
 
 from change import Window
 
@@ -92,12 +96,16 @@ class Main(QMainWindow):
         self.Lord()
 
         self.ui.NAME_SHOW.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.ui.RESULT.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.ui.RESULT.setEditTriggers(PyQt5.QtWidgets.QTableWidget.NoEditTriggers)
         self.ui.RESULT.setColumnCount(3)
         self.ui.RESULT.setRowCount(0)
-        self.inserttimes = 0
-        self.just_search = 0
+        self.ui.DIn.setValidator(QIntValidator())   # 只允许整数输入
+        self.ui.MIn.setValidator(QIntValidator())
+        self.insert_times = 0
+        self.just_searched = 0
         self.have_Changed_datas = History()
+        self.AutoCompletionForNameSearch()
         self.LordAutoStart()
 
         # 绑定槽函数
@@ -110,54 +118,65 @@ class Main(QMainWindow):
 
     def SearchByName(self):
         name = self.ui.INPUT.text()
+        if not name:
+            QMessageBox.information(self, '一般错误', '请输入数据', QMessageBox.Ok, QMessageBox.Ok)
+            return
         try:
             nameList = self.Name2Date[name]
             for date in nameList:
                 self.ui.RESULT.insertRow(int(self.ui.RESULT.rowCount()))
-                self.ui.RESULT.setItem(self.inserttimes, 0,
+                self.ui.RESULT.setItem(self.insert_times, 0,
                                        PyQt5.QtWidgets.QTableWidgetItem(str(name)))
-                self.ui.RESULT.setItem(self.inserttimes, 1,
+                self.ui.RESULT.setItem(self.insert_times, 1,
                                        PyQt5.QtWidgets.QTableWidgetItem(str(date['month'])))
-                self.ui.RESULT.setItem(self.inserttimes, 2,
+                self.ui.RESULT.setItem(self.insert_times, 2,
                                        PyQt5.QtWidgets.QTableWidgetItem(str(date['day'])))
-                self.inserttimes += 1
+                self.insert_times += 1
         except KeyError:
             self.ui.RESULT.insertRow(int(self.ui.RESULT.rowCount()))
-            self.ui.RESULT.setItem(self.inserttimes, 0,
+            self.ui.RESULT.setItem(self.insert_times, 0,
                                    PyQt5.QtWidgets.QTableWidgetItem(str(name)))
-            self.ui.RESULT.setItem(self.inserttimes, 1,
+            self.ui.RESULT.setItem(self.insert_times, 1,
                                    PyQt5.QtWidgets.QTableWidgetItem(str("Nobody Here")))
-            self.inserttimes += 1
+            self.insert_times += 1
         self.ui.RESULT.viewport().update()
 
     def SearchByDate(self):
-        month = int(self.ui.MIn.text())
-        day = int(self.ui.DIn.text())
+        if (not self.ui.MIn.text()) or (not self.ui.DIn.text()):
+            QMessageBox.information(self, '一般错误', '请输入数据', QMessageBox.Ok, QMessageBox.Ok)
+            return
+        try:
+            month = int(self.ui.MIn.text())
+            day = int(self.ui.DIn.text())
+        except ValueError:
+            QMessageBox.critical(self, '操作失败', '输入值异常', QMessageBox.Yes)
+            return
         date_couple = (month, day)
         self.ui.NAME_SHOW.setRowCount(0)
         self.ui.NAME_SHOW.clearContents()
+        _translate = QtCore.QCoreApplication.translate
+        item = self.ui.NAME_SHOW.horizontalHeaderItem(0)
+        item.setText(_translate("BirthdayManager", "name_{}.{}".format(month, day)))
         num = 0
         try:
             names = self.Date2Name[date_couple]
-            self.just_search += len(names)
+            self.just_searched += len(names)
             for name in names:
                 self.ui.NAME_SHOW.insertRow(int(self.ui.NAME_SHOW.rowCount()))
                 self.ui.NAME_SHOW.setItem(num, 0, PyQt5.QtWidgets.QTableWidgetItem(str(name)))
                 num += 1
             self.ui.NAME_SHOW.insertRow(int(self.ui.NAME_SHOW.rowCount()))
         except KeyError:
-            self.just_search += 1
+            self.just_searched += 1
             self.ui.NAME_SHOW.insertRow(int(self.ui.NAME_SHOW.rowCount()))
             self.ui.NAME_SHOW.setItem(num, 0,
                                       PyQt5.QtWidgets.QTableWidgetItem(str('None')))
         self.ui.NAME_SHOW.viewport().update()
         self.basic_data = [self.ui.NAME_SHOW.item(i, 0).text() for i in range(self.ui.NAME_SHOW.rowCount() - 1)]
-        # 如果值为None  那么self.basic_data是空列表
-        # print(self.basic_data)
 
     def HasChanged(self, item: QTableWidgetItem = None) -> None:
-        if self.just_search != 0:
-            self.just_search -= 1
+        if self.just_searched != 0:
+            self.just_searched -= 1
             return
 
         try:
@@ -195,7 +214,7 @@ class Main(QMainWindow):
                 output.write("{}\t{}\t{}\n".format(date[0], date[1], names))
 
         def func():
-            os.system("datas\\all.txt")
+            subprocess.run("datas\\all.txt", shell=True)
 
         fileopen = multiprocessing.Process(func())
         fileopen.start()
@@ -220,6 +239,7 @@ class Main(QMainWindow):
             json.dump(self.Name2Date, f, ensure_ascii=False)
         QMessageBox.information(self, '保存成功', st[len(start_msg):], QMessageBox.Ok, QMessageBox.Ok)
         self.have_Changed_datas.__init__()
+        self.AutoCompletionForNameSearch()
         self.Make_Date2Name()
         self.SearchByDate()
 
@@ -275,10 +295,10 @@ class Main(QMainWindow):
 
     def AutoStart(self):
         config = self.ui.AutoStart.isChecked()
-        workspeace = os.path.abspath('.')
+        workspace = os.path.abspath('.')
         comm1 = "cd /d \"{}\"".format(self.start_path)
         if config:
-            to = workspeace + r'\ink\BirthRemind.lnk'
+            to = workspace + r'\ink\BirthRemind.lnk'
             comm2 = 'copy {} {}'.format(to, r".\\")
             com = "{} && {}".format(comm1, comm2)
             subprocess.run(com, shell=True)
@@ -298,8 +318,27 @@ class Main(QMainWindow):
                 return
         QMessageBox.critical(self, '操作失败', com, QMessageBox.Yes)
 
+    def AutoCompletionForNameSearch(self):
+        names_list = [name for name in self.Name2Date]
+        self.completer = QCompleter(names_list)
+        self.completer.setFilterMode(Qt.MatchContains)
+        self.completer.setCompletionMode(QCompleter.PopupCompletion)
+        self.completer.setModelSorting(QCompleter.CaseSensitivelySortedModel)
+        self.completer.modelSorting()
+        self.ui.INPUT.setCompleter(self.completer)
+
+    def keyPressEvent(self, event):
+        key = event.key()
+        tab_name = self.ui.tabWidget.tabText(self.ui.tabWidget.currentIndex())
+        if key == QtCore.Qt.Key_Enter or key == Qt.Key_Return:
+            if tab_name == '查找':
+                self.SearchByName()
+            if tab_name == '编辑':
+                self.SearchByDate()
+
 
 def run():
+    setproctitle.setproctitle("BirthdayManager")
     myapp = QApplication(sys.argv)
     myDlg = Main()
     myDlg.show()
