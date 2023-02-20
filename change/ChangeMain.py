@@ -86,6 +86,19 @@ class History:
         return show
 
 
+def ChangeData2_Date2Name(rowdata: dict):
+    Date2Name = {}
+    for name in rowdata:
+        dateList = rowdata[name]
+        for date in dateList:
+            date = (date['month'], date['day'])
+            try:
+                Date2Name[date].append(name)
+            except KeyError:
+                Date2Name[date] = [name]
+    return Date2Name
+
+
 class Main(QMainWindow):
     def __init__(self, parent=None):
         super(QMainWindow, self).__init__(parent)
@@ -269,18 +282,10 @@ class Main(QMainWindow):
     def Lord(self):
         with open(self.path, 'r', encoding='utf-8') as f:
             self.Name2Date: dict = json.load(f)
-        self.Make_Date2Name()
+        self.Date2Name = ChangeData2_Date2Name(self.Name2Date)
 
     def Make_Date2Name(self):
-        self.Date2Name = {}
-        for name in self.Name2Date:
-            dateList = self.Name2Date[name]
-            for date in dateList:
-                date = (date['month'], date['day'])
-                try:
-                    self.Date2Name[date].append(name)
-                except KeyError:
-                    self.Date2Name[date] = [name]
+        self.Date2Name = ChangeData2_Date2Name(self.Name2Date)
 
     def LordAutoStart(self):
         def get_path(name):
