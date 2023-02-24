@@ -280,8 +280,15 @@ class Main(QMainWindow):
                 self.Name2Date[name] = [date]
 
     def Lord(self):
-        with open(self.path, 'r', encoding='utf-8') as f:
-            self.Name2Date: dict = json.load(f)
+        try:
+            with open(self.path, 'r', encoding='utf-8') as f:
+                self.Name2Date: dict = json.load(f)
+        except FileNotFoundError:
+            with open(self.path, 'w', encoding='utf-8') as f:
+                json.dump({}, f, ensure_ascii=False)
+                self.Name2Date = {}
+        except json.decoder.JSONDecodeError:
+            self.Name2Date = {}
         self.Date2Name = ChangeData2_Date2Name(self.Name2Date)
 
     def Make_Date2Name(self):

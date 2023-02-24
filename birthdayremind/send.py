@@ -10,8 +10,11 @@ class SendMessage:
         self.name = name
         self.times = times
         path = r"datas/emaildata.json"
-        with open(path, 'r') as f:
-            row = json.load(f)
+        try:
+            with open(path, 'r') as f:
+                row = json.load(f)
+        except FileNotFoundError:
+            self.NoFile(path)
         self.host = row['host']
         self.user = row['user']
         self.password = row['password']
@@ -35,3 +38,20 @@ class SendMessage:
         smtpObj.connect(self.host, 25)  # 25 为 SMTP 端口号
         smtpObj.login(self.sender, self.password)
         smtpObj.sendmail(self.sender, self.addresses, message.as_string())
+
+    def NoFile(self, path):
+        j = {
+            "host": "smtp.163.com",
+            "user": "username，不是很重要",
+            "password": "STMP 密码",
+            "sender": "发件箱地址",
+            "addresses": [
+                "收件箱地址",
+                "建议给发件箱自己发送一条，这样不容易被屏蔽"
+            ]
+        }
+        with open(path, 'w+', encoding='utf-8') as f:
+            json.dump(j, f, ensure_ascii=False)
+
+
+

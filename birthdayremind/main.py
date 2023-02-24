@@ -36,7 +36,6 @@ class Start:
 
         self.toaster.show_toast("BirthdayRemind", "启动成功",
                                 icon_path=None, duration=2, threaded=False)
-
         self.IfAlreadyRun()
 
         try:
@@ -53,7 +52,8 @@ class Start:
         exit()
 
     def IfAlreadyRun(self):
-        with open(r"datas/today.txt", "r") as f:
+
+        with open(r"datas/today.txt", "w+") as f:
             td = f.read()
             if td == self.today:
                 with open(r'datas/runtime.log', 'a+') as g:
@@ -61,10 +61,15 @@ class Start:
                     g.write(txt)
                 exit()
             else:
-                with open(r"datas/today.txt", "w") as f:
-                    f.write(self.today)
+                f.write(self.today)
+
 
     def Lord(self, path):
-        with open(path, 'r', encoding='utf-8') as f:
-            self.Name2Date = json.load(f)
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                self.Name2Date = json.load(f)
+        except FileNotFoundError:
+            with open(path, 'w', encoding='utf-8') as f:
+                json.dump({}, f, ensure_ascii=False)
+                self.Name2Date = {}
         self.Date2Name = Manager.ChangeData2_Date2Name(self.Name2Date)

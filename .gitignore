@@ -1,0 +1,8 @@
+/tests
+/bin
+/venv
+/datas
+
+*.log
+*.spec
+*.pyc
